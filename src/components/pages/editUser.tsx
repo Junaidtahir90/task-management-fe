@@ -6,198 +6,277 @@ import {
   Avatar,
   Box,
   Button,
-  Card,
-  CardContent,
-  CircularProgress,
   Container,
-  Divider,
-  InputAdornment,
+  Paper,
   Stack,
   TextField,
   Typography,
 } from "@mui/material";
 
-import SaveIcon from "@mui/icons-material/Save";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import EditIcon from "@mui/icons-material/Edit";
-import PersonIcon from "@mui/icons-material/Person";
-import EmailOutlinedIcon from "@mui/icons-material/EmailOutlined";
+import SaveIcon from "@mui/icons-material/Save";
 
 export default function EditUser() {
-  const { id } = useParams();
   const navigate = useNavigate();
-
-  const [loading, setLoading] = useState(true);
-
-  // UI-only state — does not affect integration
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const [form, setForm] = useState({
+  const { id } = useParams<{ id: string }>();
+  const [loading, setLoading] = useState(false);
+  const [fetching, setFetching] = useState(true);
+  const [formData, setFormData] = useState({
     name: "",
-    email: "",
+    email: ""
   });
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    const loadUser = async () => {
+    const fetchUser = async () => {
+      if (!id) return;
+      setFetching(true);
       try {
-        const res = await userApi.getOne(id!);
-
-        setForm({
-          name: res.data.name,
-          email: res.data.email,
+        const res = await userApi.getOne(id);
+        setFormData({
+          name: res.data.name || "",
+          email: res.data.email || ""
+          //password: res.data.password || "",
         });
       } catch (err) {
         console.error(err);
       } finally {
-        setLoading(false);
+        setFetching(false);
       }
     };
-
-    loadUser();
+    fetchUser();
   }, [id]);
+
+  const validate = () => {
+    const newErrors: Record<string, string> = {};
+    if (!formData.name.trim()) newErrors.name = "Full name is required";
+    if (!formData.email.trim()) {
+      newErrors.email = "Email is required";
+    }  else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email))  {
+      newErrors.email = "Invalid email address";
+    }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
+    if (!validate() || !id) return;
 
+    setLoading(true);
     try {
-      await userApi.update(id!, form);
-      navigate("/", {
-        state: {
-          message: "User updated successfully",
-          severity: "success",
-        },
-      });
+      await userApi.update(id, formData);
+      navigate("/");
     } catch (err) {
-      navigate("/", {
-        state: {
-          message: "Failed to update user",
-          severity: "error",
-        },
-      });
       console.error(err);
     } finally {
-      setIsSubmitting(false);
+      setLoading(false);
     }
   };
 
-  if (loading) {
-    return (
-      <Container maxWidth="sm" sx={{ mt: 8 }}>
-        <Stack sx={{ alignItems: "center" }} spacing={2}>
-          <CircularProgress size={32} />
-          <Typography color="text.secondary">Loading user...</Typography>
-        </Stack>
-      </Container>
-    );
-  }
+  const handleChange = (field: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData((prev) => ({ ...prev, [field]: e.target.value }));
+    if (errors[field]) setErrors((prev) => ({ ...prev, [field]: "" }));
+  };
+
+  // ─── Shared TextField sx with label fix ───
+  const textFieldSx = {
+    "& .MuiOutlinedInput-root": {
+      borderRadius: 2,
+      backgroundColor: "#fff",
+      border: "2px solid #e5e7eb",
+      py: 0.5,
+      transition: "all 0.2s",
+      "&:hover": { borderColor: "#d1d5db" },
+      "&.Mui-focused": {
+        borderColor: "#667eea",
+        boxShadow: "0 0 0 4px rgba(102,126,234,0.1)",
+      },
+      "& fieldset": { border: "none" },
+      "& legend": { display: "none" },
+    },
+    "& .MuiInputLabel-root": {
+      color: "#6b7280",
+      fontWeight: 500,
+      fontSize: 14,
+      transform: "translate(14px, 14px) scale(1)",
+      transition: "all 0.2s ease",
+    },
+    "& .MuiInputLabel-root.Mui-focused, & .MuiInputLabel-root.MuiFormLabel-filled": {
+      color: "#667eea",
+      transform: "translate(14px, -10px) scale(0.75)",
+      backgroundColor: "rgba(255,255,255,0.88)",
+      padding: "0 6px",
+      borderRadius: 1,
+    },
+    "& .MuiInputBase-input": {
+      py: 1.2,
+      fontSize: 14,
+    },
+  };
 
   return (
-    <Container maxWidth="sm" sx={{ mt: 5, mb: 5 }}>
-      <Card
-        variant="outlined"
-        sx={{
-          borderRadius: 3,
-          boxShadow: "none",
-        }}
-      >
-        <CardContent sx={{ p: 4 }}>
-          <Stack direction="row" spacing={2} sx={{ alignItems: "center", mb: 3 }}>
+    <Box
+      sx={{
+        minHeight: "100vh",
+        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+        py: 5,
+        px: { xs: 2, sm: 4 },
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      <Container maxWidth="sm">
+        <Paper
+          elevation={0}
+          sx={{
+            background: "rgba(255, 255, 255, 0.88)",
+            backdropFilter: "blur(20px)",
+            WebkitBackdropFilter: "blur(20px)",
+            border: "1px solid rgba(255, 255, 255, 0.3)",
+            borderRadius: 4,
+            boxShadow: "0 8px 32px rgba(0, 0, 0, 0.1)",
+            overflow: "hidden",
+          }}
+        >
+          {/* Header */}
+          <Box
+            sx={{
+              px: 4,
+              py: 3.5,
+              borderBottom: "1px solid rgba(0, 0, 0, 0.06)",
+              display: "flex",
+              alignItems: "center",
+              gap: 2,
+            }}
+          >
             <Avatar
               sx={{
-                bgcolor: "primary.main",
-                width: 44,
-                height: 44,
+                width: 48,
+                height: 48,
+                background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                boxShadow: "0 4px 15px rgba(102,126,234,0.3)",
               }}
             >
-              <EditIcon fontSize="small" />
+              <EditIcon sx={{ color: "#fff", fontSize: 22 }} />
             </Avatar>
             <Box>
-              <Typography variant="h5" sx={{ fontWeight: 600, lineHeight: 1.2 }}>
-                Edit user
+              <Typography
+                variant="h5"
+                sx={{
+                  fontWeight: 700,
+                  color: "#111827",
+                  lineHeight: 1.2,
+                  letterSpacing: -0.5,
+                }}
+              >
+                Edit User
               </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Update the user information below
+              <Typography
+                variant="body2"
+                sx={{ color: "#6b7280", mt: 0.3, fontSize: 14 }}
+              >
+                {/* Update the user information below */}
               </Typography>
             </Box>
-          </Stack>
+          </Box>
 
-          <Divider sx={{ mb: 3 }} />
+          {/* Form */}
+          <Box component="form" onSubmit={handleSubmit} sx={{ px: 4, py: 4 }}>
+            <Stack spacing={3}>
+              <TextField
+                fullWidth
+                label="Full name"
+                value={formData.name}
+                onChange={handleChange("name")}
+                error={!!errors.name}
+                helperText={errors.name}
+                required
+                disabled={fetching}
+                sx={textFieldSx}
+              />
 
-          <Stack component="form" spacing={2.5} onSubmit={handleSubmit}>
-            <TextField
-              label="Full name"
-              fullWidth
-              required
-              value={form.name}
-              onChange={(e) =>
-                setForm({
-                  ...form,
-                  name: e.target.value,
-                })
-              }
-              slotProps={{
-                input: {
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <PersonIcon fontSize="small" color="action" />
-                    </InputAdornment>
-                  ),
-                },
-              }}
-            />
+              <TextField
+                fullWidth
+                label="Email address"
+                type="email"
+                value={formData.email}
+                onChange={handleChange("email")}
+                error={!!errors.email}
+                helperText={errors.email}
+                required
+                disabled={fetching}
+                sx={textFieldSx}
+              />
+            </Stack>
 
-            <TextField
-              label="Email address"
-              type="email"
-              fullWidth
-              required
-              value={form.email}
-              onChange={(e) =>
-                setForm({
-                  ...form,
-                  email: e.target.value,
-                })
-              }
-              slotProps={{
-                input: {
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <EmailOutlinedIcon fontSize="small" color="action" />
-                    </InputAdornment>
-                  ),
-                },
-              }}
-            />
-
+            {/* Buttons */}
             <Box
               sx={{
                 display: "flex",
                 justifyContent: "space-between",
-                mt: 1.5,
+                alignItems: "center",
+                mt: 4,
               }}
             >
               <Button
                 variant="outlined"
                 startIcon={<ArrowBackIcon />}
                 onClick={() => navigate("/")}
-                disabled={isSubmitting}
+                sx={{
+                  color: "#667eea",
+                  borderColor: "#e5e7eb",
+                  borderWidth: 2,
+                  fontWeight: 600,
+                  fontSize: 14,
+                  textTransform: "none",
+                  px: 3,
+                  py: 1,
+                  borderRadius: 2,
+                  transition: "all 0.2s",
+                  "&:hover": {
+                    borderColor: "#667eea",
+                    backgroundColor: "rgba(102,126,234,0.05)",
+                  },
+                }}
               >
                 Back
               </Button>
 
               <Button
-                variant="contained"
                 type="submit"
+                variant="contained"
                 startIcon={<SaveIcon />}
-                disabled={isSubmitting}
+                disabled={loading || fetching}
+                sx={{
+                  background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                  color: "#fff",
+                  fontWeight: 600,
+                  fontSize: 14,
+                  textTransform: "none",
+                  px: 3,
+                  py: 1,
+                  borderRadius: 2,
+                  boxShadow: "0 4px 15px rgba(102,126,234,0.4)",
+                  transition: "all 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
+                  "&:hover": {
+                    background: "linear-gradient(135deg, #5a67d8 0%, #6b46a1 100%)",
+                    boxShadow: "0 6px 20px rgba(102,126,234,0.5)",
+                    transform: "translateY(-1px)",
+                  },
+                  "&:disabled": {
+                    opacity: 0.6,
+                  },
+                }}
               >
-                {isSubmitting ? "Updating..." : "Update user"}
+                {loading ? "Updating..." : "Update User"}
               </Button>
             </Box>
-          </Stack>
-        </CardContent>
-      </Card>
-    </Container>
+          </Box>
+        </Paper>
+      </Container>
+    </Box>
   );
 }
