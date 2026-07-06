@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { userApi } from "../../api/userApi";
 import type { User } from "../../types/user";
@@ -11,8 +11,9 @@ import {
   Chip,
   Container,
   IconButton,
+  InputAdornment,
   Stack,
-  
+  TextField,
   Tooltip,
   Typography,
 } from "@mui/material";
@@ -22,10 +23,16 @@ import { DataGrid, type GridColDef } from "@mui/x-data-grid";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
+import GroupOutlinedIcon from "@mui/icons-material/GroupOutlined";
+import SearchIcon from "@mui/icons-material/Search";
 
 export default function UserList() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
+
+  // UI-only state — client-side filter, no new API calls
+  const [search, setSearch] = useState("");
+
   const navigate = useNavigate();
 
   const fetchUsers = async () => {
@@ -54,14 +61,25 @@ export default function UserList() {
     }
   };
 
+  const filteredUsers = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (!query) return users;
+
+    return users.filter(
+      (u) =>
+        u.name?.toLowerCase().includes(query) ||
+        u.email?.toLowerCase().includes(query)
+    );
+  }, [users, search]);
+
   const columns: GridColDef[] = [
     {
       field: "name",
-      headerName: "User",
+      headerName: "Name",
       flex: 1.5,
       renderCell: (params) => (
         <Stack direction="row" spacing={2} sx={{ alignItems: "center" }}>
-          <Avatar sx={{ bgcolor: "primary.main" }}>
+          <Avatar sx={{ bgcolor: "primary.main", width: 34, height: 34, fontSize: 14 }}>
             {params.row.name?.charAt(0).toUpperCase()}
           </Avatar>
 
@@ -86,6 +104,7 @@ export default function UserList() {
           label="Active"
           color="success"
           size="small"
+          sx={{ fontWeight: 500 }}
         />
       ),
     },
@@ -97,21 +116,22 @@ export default function UserList() {
       filterable: false,
       renderCell: (params) => (
         <>
-          <Tooltip title="Edit User">
+          <Tooltip title="Edit user">
             <IconButton
-              color="primary"
+              size="small"
               onClick={() => navigate(`/edit/${params.row.id}`)}
             >
-              <EditIcon />
+              <EditIcon fontSize="small" />
             </IconButton>
           </Tooltip>
 
-          <Tooltip title="Delete User">
+          <Tooltip title="Delete user">
             <IconButton
+              size="small"
               color="error"
               onClick={() => handleDelete(params.row.id)}
             >
-              <DeleteIcon />
+              <DeleteIcon fontSize="small" />
             </IconButton>
           </Tooltip>
         </>
@@ -120,48 +140,65 @@ export default function UserList() {
   ];
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 5 }}>
-      <Card elevation={4}>
-        <CardContent>
-
+    <Container maxWidth="lg" sx={{ mt: 5, mb: 5 }}>
+      <Card variant="outlined" sx={{ borderRadius: 3, boxShadow: "none" }}>
+        <CardContent sx={{ p: 4 }}>
           <Box
             sx={{
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
               mb: 3,
+              flexWrap: "wrap",
+              gap: 2,
             }}
           >
-            <Box>
-              <Typography variant="h4" component="h1" sx={{ fontWeight: "bold" }}>
-                User Management
-              </Typography>
-
-              {/* <Typography color="text.secondary">
-                Manage your application users
-              </Typography> */}
-            </Box>
+            <Stack direction="row" spacing={2} sx={{ alignItems: "center" }}>
+              <Avatar sx={{ bgcolor: "primary.main", width: 44, height: 44 }}>
+                <GroupOutlinedIcon fontSize="small" />
+              </Avatar>
+              <Box>
+                <Typography variant="h5" component="h1" sx={{ fontWeight: 600, lineHeight: 1.2 }}>
+                  User management
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Manage access and roles for your team
+                </Typography>
+              </Box>
+            </Stack>
 
             <Button
               variant="contained"
               startIcon={<AddIcon />}
               onClick={() => navigate("/create")}
             >
-              Add User
+              Add user
             </Button>
           </Box>
-{/* 
+
           <Box sx={{ mb: 3 }}>
             <TextField
               fullWidth
+              variant="outlined"
               size="small"
-              placeholder="🔍 Search users..."
+              placeholder="Search by name or email"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              slotProps={{
+                input: {
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon fontSize="small" color="action" />
+                    </InputAdornment>
+                  ),
+                },
+              }}
             />
-          </Box> */}
+          </Box>
 
           <Box sx={{ height: 450, width: "100%" }}>
             <DataGrid
-              rows={users}
+              rows={filteredUsers}
               columns={columns}
               getRowId={(row) => row.id}
               loading={loading}
@@ -177,16 +214,15 @@ export default function UserList() {
               sx={{
                 border: 0,
                 "& .MuiDataGrid-columnHeaders": {
-                  backgroundColor: "#f5f5f5",
+                  backgroundColor: "grey.50",
                   fontWeight: "bold",
                 },
                 "& .MuiDataGrid-row:hover": {
-                  backgroundColor: "#fafafa",
+                  backgroundColor: "action.hover",
                 },
               }}
             />
           </Box>
-
         </CardContent>
       </Card>
     </Container>
